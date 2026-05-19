@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --c-bg: #0d0d0f;
+      --c-surface: #16161a;
+      --c-raised: #1e1e24;
+      --c-border: #2a2a35;
+      --c-accent: #7c6af7;
+      --c-accent-hover: #6b58f0;
+      --c-text: #f0f0f5;
+      --c-muted: #6b6b80;
+      --c-btn: #1c1c24;
+      --c-btn-hover: #26263a;
+      --c-op: #1e1830;
+      --c-op-hover: #2d2550;
+      --c-danger: #ff4d6d;
+      --c-green: #22d3a0;
+      --c-amber: #f59e0b;
+      --rad: 14px;
+    }
+
+    body {
+      background: var(--c-bg);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .calc-wrap { width: 380px; }
+
+    .calc {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    /* ── History ── */
+    .history-panel {
+      background: var(--c-bg);
+      padding: 12px 20px 8px;
+      min-height: 56px;
+      max-height: 76px;
+      overflow-y: auto;
+      border-bottom: 1px solid var(--c-border);
+      scrollbar-width: thin;
+      scrollbar-color: var(--c-border) transparent;
+    }
+    .history-entry {
+      font-size: 12px;
+      color: var(--c-muted);
+      text-align: right;
+      font-family: 'Share Tech Mono', monospace;
+      line-height: 1.7;
+    }
+
+    /* ── Display ── */
+    .display-area { padding: 16px 24px 12px; }
+    .expression {
+      font-size: 13px;
+      color: var(--c-muted);
+      font-family: 'Share Tech Mono', monospace;
+      text-align: right;
+      min-height: 20px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .main-display {
+      font-size: 48px;
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--c-text);
+      text-align: right;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: font-size 0.1s;
+    }
+    .main-display.small  { font-size: 30px; }
+    .main-display.xsmall { font-size: 20px; }
+    .main-display.error  { color: var(--c-danger); font-size: 22px; }
+
+    /* ── Mode Tabs ── */
+    .mode-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 0 16px 12px;
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 6px 0;
+      font-size: 11px;
+      font-weight: 600;
+      background: transparent;
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      color: var(--c-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.6px;
+      font-family: 'Outfit', sans-serif;
+    }
+    .mode-tab.active {
+      background: var(--c-accent);
+      border-color: var(--c-accent);
+      color: #fff;
+    }
+    .mode-tab:hover:not(.active) {
+      background: var(--c-raised);
+      color: var(--c-text);
+    }
+
+    /* ── Memory Bar ── */
+    .memory-bar {
+      display: flex;
+      gap: 6px;
+      padding: 0 16px 12px;
+    }
+    .mem-btn {
+      flex: 1;
+      padding: 7px 0;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--c-bg);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      color: var(--c-muted);
+      cursor: pointer;
+      transition: all 0.12s;
+      letter-spacing: 0.3px;
+      font-family: 'Outfit', sans-serif;
+    }
+    .mem-btn:hover { background: var(--c-raised); color: var(--c-text); }
+    .mem-btn.active { color: var(--c-amber); border-color: rgba(245,158,11,0.45); }
+
+    /* ── Button Grid ── */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 8px 16px 20px;
+    }
+
+    .btn {
+      height: 64px;
+      border-radius: var(--rad);
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 500;
+      transition: all 0.12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      outline: none;
+      user-select: none;
+    }
+    .btn:active { transform: scale(0.92); }
+    .btn:focus-visible { box-shadow: 0 0 0 2px var(--c-accent); }
+
+    .btn-num {
+      background: var(--c-btn);
+      color: var(--c-text);
+      border: 1px solid var(--c-border);
+    }
+    .btn-num:hover { background: var(--c-btn-hover); border-color: var(--c-accent); }
+
+    .btn-op {
+      background: var(--c-op);
+      color: var(--c-accent);
+      border: 1px solid rgba(124,106,247,0.22);
+      font-size: 22px;
+    }
+    .btn-op:hover { background: var(--c-op-hover); border-color: var(--c-accent); }
+
+    .btn-fn {
+      background: var(--c-raised);
+      color: var(--c-muted);
+      border: 1px solid var(--c-border);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-fn:hover { background: #2a2a35; color: var(--c-text); }
+
+    .btn-eq {
+      background: var(--c-accent);
+      color: #fff;
+      border: none;
+      font-size: 24px;
+      grid-column: span 2;
+    }
+    .btn-eq:hover { background: var(--c-accent-hover); }
+
+    .btn-clr {
+      background: rgba(255,77,109,0.12);
+      color: var(--c-danger);
+      border: 1px solid rgba(255,77,109,0.22);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .btn-clr:hover { background: rgba(255,77,109,0.24); }
+
+    .btn-zero { grid-column: span 2; }
+
+    .btn-sci {
+      background: var(--c-raised);
+      color: var(--c-green);
+      border: 1px solid rgba(34,211,160,0.22);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-sci:hover { background: rgba(34,211,160,0.1); border-color: rgba(34,211,160,0.5); }
+
+    /* ── Angle toggle ── */
+    .angle-row {
+      grid-column: span 4;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+    .angle-toggle {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 4px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--c-border);
+      background: var(--c-raised);
+      color: var(--c-muted);
+      cursor: pointer;
+      transition: all 0.13s;
+      font-family: 'Outfit', sans-serif;
+    }
+    .angle-toggle.deg { color: var(--c-amber); border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.07); }
+    .angle-toggle.rad { color: var(--c-green); border-color: rgba(34,211,160,0.4); background: rgba(34,211,160,0.07); }
+
+    /* ── Converter ── */
+    .conv-wrapper { padding: 0 0 16px; }
+    .divider { height: 1px; background: var(--c-border); margin: 0 16px 14px; }
+    .conv-section { padding: 0 16px 14px; }
+    .conv-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--c-muted);
+      letter-spacing: 1.2px;
+      margin-bottom: 8px;
+      padding: 0 2px;
+    }
+    .conv-row { display: flex; gap: 8px; align-items: center; }
+    .conv-input {
+      flex: 1;
+      background: var(--c-bg);
+      border: 1px solid var(--c-border);
+      border-radius: 10px;
+      padding: 9px 12px;
+      color: var(--c-text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.13s;
+    }
+    .conv-input:focus { border-color: var(--c-accent); }
+    .conv-select {
+      background: var(--c-bg);
+      border: 1px solid var(--c-border);
+      border-radius: 10px;
+      padding: 9px 10px;
+      color: var(--c-text);
+      font-size: 13px;
+      font-family: 'Outfit', sans-serif;
+      outline: none;
+      cursor: pointer;
+    }
+    .conv-arrow { color: var(--c-muted); font-size: 16px; }
+    .conv-result {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      color: var(--c-green);
+      text-align: center;
+      padding: 5px 0 0;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="calc-wrap">
+  <div class="calc">
+
+    <!-- History -->
+    <div class="history-panel">
+      <div class="history-entry" id="historyLog">— history —</div>
+    </div>
+
+    <!-- Display -->
+    <div class="display-area">
+      <div class="expression" id="exprDisplay"></div>
+      <div class="main-display" id="mainDisplay">0</div>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('std')">STANDARD</button>
+      <button class="mode-tab"        onclick="setMode('sci')">SCIENTIFIC</button>
+      <button class="mode-tab"        onclick="setMode('conv')">CONVERTER</button>
+    </div>
+
+    <!-- Memory Bar -->
+    <div class="memory-bar">
+      <button class="mem-btn" id="btnMC" onclick="memClear()">MC</button>
+      <button class="mem-btn" id="btnMR" onclick="memRecall()">MR</button>
+      <button class="mem-btn"           onclick="memStore()">MS</button>
+      <button class="mem-btn"           onclick="memAdd()">M+</button>
+      <button class="mem-btn"           onclick="memSub()">M−</button>
+    </div>
+
+    <!-- ── STANDARD GRID ── -->
+    <div id="stdGrid" class="btn-grid">
+      <button class="btn btn-clr"               onclick="clearAll()">AC</button>
+      <button class="btn btn-fn"                onclick="toggleSign()">+/−</button>
+      <button class="btn btn-fn"                onclick="percentage()">%</button>
+      <button class="btn btn-op"                onclick="appendOp('/')">÷</button>
+
+      <button class="btn btn-num"               onclick="appendNum('7')">7</button>
+      <button class="btn btn-num"               onclick="appendNum('8')">8</button>
+      <button class="btn btn-num"               onclick="appendNum('9')">9</button>
+      <button class="btn btn-op"                onclick="appendOp('*')">×</button>
+
+      <button class="btn btn-num"               onclick="appendNum('4')">4</button>
+      <button class="btn btn-num"               onclick="appendNum('5')">5</button>
+      <button class="btn btn-num"               onclick="appendNum('6')">6</button>
+      <button class="btn btn-op"                onclick="appendOp('-')">−</button>
+
+      <button class="btn btn-num"               onclick="appendNum('1')">1</button>
+      <button class="btn btn-num"               onclick="appendNum('2')">2</button>
+      <button class="btn btn-num"               onclick="appendNum('3')">3</button>
+      <button class="btn btn-op"                onclick="appendOp('+')">+</button>
+
+      <button class="btn btn-num btn-zero"      onclick="appendNum('0')">0</button>
+      <button class="btn btn-num"               onclick="appendDot()">.</button>
+      <button class="btn btn-eq"                onclick="calculate()">=</button>
+    </div>
+
+    <!-- ── SCIENTIFIC GRID ── -->
+    <div id="sciGrid" class="btn-grid" style="display:none">
+      <div class="angle-row">
+        <button class="angle-toggle deg" id="anglBtn" onclick="toggleAngle()">DEG</button>
+        <span style="font-size:11px;color:var(--c-muted)">angle mode</span>
+      </div>
+
+      <button class="btn btn-sci" onclick="sciFunc('sin')">sin</button>
+      <button class="btn btn-sci" onclick="sciFunc('cos')">cos</button>
+      <button class="btn btn-sci" onclick="sciFunc('tan')">tan</button>
+      <button class="btn btn-sci" onclick="sciFunc('log')">log</button>
+
+      <button class="btn btn-sci" onclick="sciFunc('asin')">sin⁻¹</button>
+      <button class="btn btn-sci" onclick="sciFunc('acos')">cos⁻¹</button>
+      <button class="btn btn-sci" onclick="sciFunc('atan')">tan⁻¹</button>
+      <button class="btn btn-sci" onclick="sciFunc('ln')">ln</button>
+
+      <button class="btn btn-sci" onclick="sciFunc('sqrt')">√x</button>
+      <button class="btn btn-sci" onclick="sciFunc('sq')">x²</button>
+      <button class="btn btn-sci" onclick="sciFunc('cube')">x³</button>
+      <button class="btn btn-sci" onclick="sciFunc('inv')">1/x</button>
+
+      <button class="btn btn-sci" onclick="appendOp('^')">xʸ</button>
+      <button class="btn btn-sci" onclick="sciFunc('fact')">n!</button>
+      <button class="btn btn-sci" onclick="insertConst(Math.PI,  'π')">π</button>
+      <button class="btn btn-sci" onclick="insertConst(Math.E,   'e')">e</button>
+
+      <button class="btn btn-clr"          onclick="clearAll()">AC</button>
+      <button class="btn btn-fn"           onclick="backspace()">⌫</button>
+      <button class="btn btn-fn"           onclick="insertParen()">( )</button>
+      <button class="btn btn-op"           onclick="appendOp('/')">÷</button>
+
+      <button class="btn btn-num"          onclick="appendNum('7')">7</button>
+      <button class="btn btn-num"          onclick="appendNum('8')">8</button>
+      <button class="btn btn-num"          onclick="appendNum('9')">9</button>
+      <button class="btn btn-op"           onclick="appendOp('*')">×</button>
+
+      <button class="btn btn-num"          onclick="appendNum('4')">4</button>
+      <button class="btn btn-num"          onclick="appendNum('5')">5</button>
+      <button class="btn btn-num"          onclick="appendNum('6')">6</button>
+      <button class="btn btn-op"           onclick="appendOp('-')">−</button>
+
+      <button class="btn btn-num"          onclick="appendNum('1')">1</button>
+      <button class="btn btn-num"          onclick="appendNum('2')">2</button>
+      <button class="btn btn-num"          onclick="appendNum('3')">3</button>
+      <button class="btn btn-op"           onclick="appendOp('+')">+</button>
+
+      <button class="btn btn-num btn-zero" onclick="appendNum('0')">0</button>
+      <button class="btn btn-num"          onclick="appendDot()">.</button>
+      <button class="btn btn-eq"           onclick="calculate()">=</button>
+    </div>
+
+    <!-- ── CONVERTER ── -->
+    <div id="convGrid" class="conv-wrapper" style="display:none">
+
+      <div class="divider"></div>
+      <div class="conv-section">
+        <div class="conv-label">LENGTH</div>
+        <div class="conv-row">
+          <input  class="conv-input"  id="lenIn"   type="number" placeholder="value" oninput="convertUnit('len')">
+          <select class="conv-select" id="lenFrom"  onchange="convertUnit('len')">
+            <option>m</option><option>km</option><option>cm</option>
+            <option>mm</option><option>mi</option><option>ft</option><option>in</option>
+          </select>
+          <span class="conv-arrow">→</span>
+          <select class="conv-select" id="lenTo" onchange="convertUnit('len')">
+            <option>km</option><option>m</option><option>cm</option>
+            <option>mm</option><option>mi</option><option>ft</option><option>in</option>
+          </select>
+        </div>
+        <div class="conv-result" id="lenResult">—</div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="conv-section">
+        <div class="conv-label">TEMPERATURE</div>
+        <div class="conv-row">
+          <input  class="conv-input"  id="tempIn"   type="number" placeholder="value" oninput="convertUnit('temp')">
+          <select class="conv-select" id="tempFrom"  onchange="convertUnit('temp')">
+            <option>°C</option><option>°F</option><option>K</option>
+          </select>
+          <span class="conv-arrow">→</span>
+          <select class="conv-select" id="tempTo" onchange="convertUnit('temp')">
+            <option>°F</option><option>°C</option><option>K</option>
+          </select>
+        </div>
+        <div class="conv-result" id="tempResult">—</div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="conv-section">
+        <div class="conv-label">WEIGHT</div>
+        <div class="conv-row">
+          <input  class="conv-input"  id="wgtIn"   type="number" placeholder="value" oninput="convertUnit('wgt')">
+          <select class="conv-select" id="wgtFrom"  onchange="convertUnit('wgt')">
+            <option>kg</option><option>g</option><option>lb</option><option>oz</option><option>t</option>
+          </select>
+          <span class="conv-arrow">→</span>
+          <select class="conv-select" id="wgtTo" onchange="convertUnit('wgt')">
+            <option>g</option><option>kg</option><option>lb</option><option>oz</option><option>t</option>
+          </select>
+        </div>
+        <div class="conv-result" id="wgtResult">—</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ─────────────────────────────────────────
+     State
+  ───────────────────────────────────────── */
+  let current    = '0';
+  let expr       = '';
+  let waiting    = false;   // waiting for next operand
+  let openParen  = 0;
+  let angleMode  = 'deg';
+  let memory     = 0;
+  let hasMemory  = false;
+  let currentMode = 'std';
+
+  /* ─────────────────────────────────────────
+     Display helpers
+  ───────────────────────────────────────── */
+  function updateDisplay(val) {
+    const d = document.getElementById('mainDisplay');
+    const s = String(val);
+    d.className = 'main-display';
+    if (s === 'Error' || s === 'Infinity' || s === '-Infinity' || s === 'NaN') {
+      d.className = 'main-display error';
+    } else if (s.length > 16) {
+      d.className = 'main-display xsmall';
+    } else if (s.length > 11) {
+      d.className = 'main-display small';
+    }
+    d.textContent = s;
+  }
+
+  function updateExpr(e) {
+    document.getElementById('exprDisplay').textContent = e;
+  }
+
+  /* ─────────────────────────────────────────
+     Input handlers
+  ───────────────────────────────────────── */
+  function appendNum(n) {
+    if (waiting) { current = n; waiting = false; }
+    else          { current = current === '0' ? n : current + n; }
+    updateDisplay(current);
+  }
+
+  function appendDot() {
+    if (waiting) { current = '0.'; waiting = false; }
+    else if (!current.includes('.')) { current += '.'; }
+    updateDisplay(current);
+  }
+
+  function appendOp(op) {
+    const labels = { '+':'+', '-':'−', '*':'×', '/':'÷', '^':'^' };
+    expr    = (expr || current) + ' ' + (labels[op] || op) + ' ';
+    waiting = true;
+    updateExpr(expr);
+  }
+
+  function insertConst(value, label) {
+    const str = String(parseFloat(value.toFixed(10)));
+    if (waiting) { current = str; waiting = false; }
+    else          { current = str; }
+    updateDisplay(current);
+  }
+
+  function insertParen() {
+    if (openParen === 0 || waiting) {
+      expr += '( ';
+      openParen++;
+      waiting = false;
+    } else {
+      expr += current + ' ) ';
+      openParen--;
+      current = '0';
+      waiting = true;
+    }
+    updateExpr(expr);
+  }
+
+  function toggleSign() {
+    if (current !== '0') {
+      current = current.startsWith('-') ? current.slice(1) : '-' + current;
+      updateDisplay(current);
+    }
+  }
+
+  function percentage() {
+    current = String(parseFloat(current) / 100);
+    updateDisplay(current);
+  }
+
+  function backspace() {
+    current = current.length > 1 ? current.slice(0, -1) : '0';
+    updateDisplay(current);
+  }
+
+  function clearAll() {
+    current   = '0';
+    expr      = '';
+    waiting   = false;
+    openParen = 0;
+    updateDisplay('0');
+    updateExpr('');
+  }
+
+  /* ─────────────────────────────────────────
+     Calculate
+  ───────────────────────────────────────── */
+  function calculate() {
+    try {
+      let full     = expr + current;
+      let evalStr  = full
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/−/g, '-')
+        .replace(/\^/g, '**');
+
+      // eslint-disable-next-line no-new-func
+      let result = Function('"use strict"; return (' + evalStr + ')')();
+
+      if (!isFinite(result)) throw new Error('Math Error');
+
+      let rStr = parseFloat(result.toFixed(10)).toString();
+      addHistory(full + ' = ' + rStr);
+      current = rStr;
+      expr    = '';
+      waiting = true;
+      updateDisplay(rStr);
+      updateExpr('');
+    } catch (err) {
+      updateDisplay('Error');
+      updateExpr('');
+      waiting = true;
+      current = '0';
+    }
+  }
+
+  /* ─────────────────────────────────────────
+     Scientific functions
+  ───────────────────────────────────────── */
+  function sciFunc(fn) {
+    let val    = parseFloat(current);
+    let result;
+
+    const toRad   = x => angleMode === 'deg' ? x * Math.PI / 180 : x;
+    const fromRad = x => angleMode === 'deg' ? x * 180 / Math.PI : x;
+
+    switch (fn) {
+      case 'sin':  result = Math.sin(toRad(val));  break;
+      case 'cos':  result = Math.cos(toRad(val));  break;
+      case 'tan':  result = Math.tan(toRad(val));  break;
+      case 'asin': result = fromRad(Math.asin(val)); break;
+      case 'acos': result = fromRad(Math.acos(val)); break;
+      case 'atan': result = fromRad(Math.atan(val)); break;
+      case 'log':  result = Math.log10(val);       break;
+      case 'ln':   result = Math.log(val);         break;
+      case 'sqrt': result = Math.sqrt(val);        break;
+      case 'sq':   result = val * val;             break;
+      case 'cube': result = val * val * val;       break;
+      case 'inv':  result = 1 / val;               break;
+      case 'fact': result = factorial(Math.round(val)); break;
+      default: return;
+    }
+
+    if (result === undefined || isNaN(result) || !isFinite(result)) {
+      updateDisplay('Error'); return;
+    }
+
+    let r = parseFloat(result.toFixed(10)).toString();
+    addHistory(fn + '(' + val + ') = ' + r);
+    current = r;
+    waiting = true;
+    updateDisplay(r);
+    updateExpr('');
+  }
+
+  function factorial(n) {
+    if (n < 0 || n > 170) return Infinity;
+    if (n <= 1) return 1;
+    let r = 1;
+    for (let i = 2; i <= n; i++) r *= i;
+    return r;
+  }
+
+  function toggleAngle() {
+    angleMode = angleMode === 'deg' ? 'rad' : 'deg';
+    const btn = document.getElementById('anglBtn');
+    btn.textContent  = angleMode.toUpperCase();
+    btn.className    = 'angle-toggle ' + angleMode;
+  }
+
+  /* ─────────────────────────────────────────
+     Memory
+  ───────────────────────────────────────── */
+  function memClear() {
+    memory    = 0;
+    hasMemory = false;
+    document.getElementById('btnMC').classList.remove('active');
+    document.getElementById('btnMR').classList.remove('active');
+  }
+  function memRecall() {
+    if (hasMemory) { current = String(memory); waiting = true; updateDisplay(current); }
+  }
+  function memStore() {
+    memory    = parseFloat(current);
+    hasMemory = true;
+    document.getElementById('btnMR').classList.add('active');
+    document.getElementById('btnMC').classList.add('active');
+  }
+  function memAdd() {
+    memory    += parseFloat(current);
+    hasMemory = true;
+    document.getElementById('btnMR').classList.add('active');
+    document.getElementById('btnMC').classList.add('active');
+  }
+  function memSub() {
+    memory    -= parseFloat(current);
+    hasMemory = true;
+    document.getElementById('btnMR').classList.add('active');
+    document.getElementById('btnMC').classList.add('active');
+  }
+
+  /* ─────────────────────────────────────────
+     History
+  ───────────────────────────────────────── */
+  function addHistory(entry) {
+    const log = document.getElementById('historyLog');
+    if (log.textContent === '— history —') log.textContent = '';
+    const line = document.createElement('div');
+    line.textContent = entry;
+    log.appendChild(line);
+    const panel = document.getElementById('histPanel');
+    if (panel) panel.scrollTop = panel.scrollHeight;
+  }
+
+  /* ─────────────────────────────────────────
+     Mode switching
+  ───────────────────────────────────────── */
+  function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('stdGrid').style.display  = mode === 'std'  ? 'grid'  : 'none';
+    document.getElementById('sciGrid').style.display  = mode === 'sci'  ? 'grid'  : 'none';
+    document.getElementById('convGrid').style.display = mode === 'conv' ? 'block' : 'none';
+    document.querySelectorAll('.mode-tab').forEach((t, i) => {
+      t.classList.toggle('active', ['std', 'sci', 'conv'][i] === mode);
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     Unit Converter
+  ───────────────────────────────────────── */
+  const lenToM  = { m:1, km:1000, cm:0.01, mm:0.001, mi:1609.344, ft:0.3048, 'in':0.0254 };
+  const wgtToKg = { kg:1, g:0.001, lb:0.453592, oz:0.0283495, t:1000 };
+
+  function convertUnit(type) {
+    if (type === 'len') {
+      const v    = parseFloat(document.getElementById('lenIn').value);
+      const from = document.getElementById('lenFrom').value;
+      const to   = document.getElementById('lenTo').value;
+      if (isNaN(v)) { document.getElementById('lenResult').textContent = '—'; return; }
+      const res  = v * lenToM[from] / lenToM[to];
+      document.getElementById('lenResult').textContent = parseFloat(res.toFixed(8)) + ' ' + to;
+
+    } else if (type === 'temp') {
+      const v    = parseFloat(document.getElementById('tempIn').value);
+      const from = document.getElementById('tempFrom').value;
+      const to   = document.getElementById('tempTo').value;
+      if (isNaN(v)) { document.getElementById('tempResult').textContent = '—'; return; }
+      let celsius;
+      if (from === '°C')      celsius = v;
+      else if (from === '°F') celsius = (v - 32) * 5 / 9;
+      else                    celsius = v - 273.15;
+      let res;
+      if (to === '°C')      res = celsius;
+      else if (to === '°F') res = celsius * 9 / 5 + 32;
+      else                  res = celsius + 273.15;
+      document.getElementById('tempResult').textContent = parseFloat(res.toFixed(4)) + ' ' + to;
+
+    } else if (type === 'wgt') {
+      const v    = parseFloat(document.getElementById('wgtIn').value);
+      const from = document.getElementById('wgtFrom').value;
+      const to   = document.getElementById('wgtTo').value;
+      if (isNaN(v)) { document.getElementById('wgtResult').textContent = '—'; return; }
+      const res  = v * wgtToKg[from] / wgtToKg[to];
+      document.getElementById('wgtResult').textContent = parseFloat(res.toFixed(8)) + ' ' + to;
+    }
+  }
+
+  /* ─────────────────────────────────────────
+     Keyboard support
+  ───────────────────────────────────────── */
+  document.addEventListener('keydown', e => {
+    if (currentMode === 'conv') return;
+    if (e.key >= '0' && e.key <= '9') { appendNum(e.key); return; }
+    switch (e.key) {
+      case '.':         appendDot();       break;
+      case '+':         appendOp('+');     break;
+      case '-':         appendOp('-');     break;
+      case '*':         appendOp('*');     break;
+      case '/':         e.preventDefault(); appendOp('/'); break;
+      case '^':         appendOp('^');     break;
+      case 'Enter':
+      case '=':         calculate();       break;
+      case 'Backspace': backspace();       break;
+      case 'Escape':    clearAll();        break;
+      case '%':         percentage();      break;
+      case '(':
+      case ')':         insertParen();     break;
+    }
+  });
+</script>
+</body>
+</html>
